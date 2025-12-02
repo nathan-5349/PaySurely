@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+.btn {
+  @apply bg-blue-600 hover:bg-blue-700 font-semibold py-2 rounded transition;
+}
+
+.input {
+  @apply p-3 w-80 rounded-lg bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
