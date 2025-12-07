@@ -1,5 +1,6 @@
-import './style.css'
+import './style.css';
 
+// --- Structure HTML du login ---
 document.querySelector('#app').innerHTML = `
 <div class="bg-[url('/src/image/FondEcran.jpg')] bg-center bg-no-repeat bg-cover h-screen w-screen relative before:absolute before:inset-0 before:bg-black/40 before:z-0">
   <div class="relative z-10 flex flex-col items-center justify-center h-full text-white">
@@ -9,21 +10,18 @@ document.querySelector('#app').innerHTML = `
       <input id="identifiant" class="input" type="email" placeholder="Adresse mail" required>
       <input id="motdepasse" class="input" type="password" placeholder="Mot de passe" required>
       <button class="btn mt-8" type="submit">Connexion</button>
-      <button class="btn">Inscription</button>
+      <button class="btn" type="button" id="btnInscription">Inscription</button>
     </form>
-
     <div id="message" class="mt-4 text-red-400"></div>
-
   </div>
 </div>
 `;
 
+const form = document.getElementById("formulaireConnexion");
+const message = document.getElementById("message");
+const btnInscription = document.getElementById("btnInscription");
 
-// --- utilisateurs simulés pour test ---
-/* const users = [
-  { email: "admin@example.com", password: "1234", role: "admin" },
-  { email: "user@example.com", password: "1234", role: "user" }
-]; */
+// --- Gestion du login ---
 form.addEventListener("submit", async function(e){
   e.preventDefault();
   const email = document.getElementById("identifiant").value.trim();
@@ -36,7 +34,7 @@ form.addEventListener("submit", async function(e){
       body: JSON.stringify({ email, password })
     });
 
-    if(!res.ok) {
+    if(!res.ok){
       const errData = await res.json();
       message.style.color = 'tomato';
       message.textContent = errData.error?.message || 'Erreur de connexion';
@@ -55,7 +53,7 @@ form.addEventListener("submit", async function(e){
     message.style.color = 'lightgreen';
     message.textContent = `Bienvenue ${role} ! Chargement...`;
 
-    setTimeout(() => loadRoleScript(role), 250);
+    setTimeout(() => loadRolePage(role), 250);
 
   } catch(err) {
     message.style.color = 'tomato';
@@ -64,44 +62,17 @@ form.addEventListener("submit", async function(e){
   }
 });
 
-
-// --- fonction pour charger le script correspondant au rôle ---
-function loadRoleScript(role) {
-  const prev = document.getElementById('role-script');
-  if (prev) prev.remove();
-
-  const script = document.createElement('script');
-  script.id = 'role-script';
-  script.src = role === 'admin' ? '/src/pages/admin.js' : '/src/pages/user.js';
-  script.defer = true;
-  document.body.appendChild(script);
-}
-
-// --- récupération des éléments ---
-const form = document.getElementById("formulaireConnexion");
-const message = document.getElementById("message");
-
-
-
-// ------ Gestion de la connexion ------
-
-form.addEventListener("submit", function(e){
-  e.preventDefault();
-  const email = document.getElementById("identifiant").value.trim();
-  const password = document.getElementById("motdepasse").value.trim();
-
-  const found = users.find(u => u.email === email && u.password === password);
-
-  if(found){
-    localStorage.setItem("role", found.role);
-    localStorage.setItem("email", found.email);
-
-    message.style.color = 'lightgreen';
-    message.textContent = `Bienvenue ${found.role} ! Chargement...`;
-
-    setTimeout(() => loadRoleScript(found.role), 250);
-  } else {
-    message.style.color = 'tomato';
-    message.textContent = "Email ou mot de passe incorrect.";
-  }
+// --- Inscription ---
+btnInscription.addEventListener('click', () => {
+  window.location.href = '/inscription.html';
 });
+
+// --- Charger dashboard selon rôle ---
+function loadRolePage(role) {
+  if(role === 'admin'){
+    import('./pages/admin.js');
+  } else {
+    import('./pages/user.js');
+  }
+}
+y
