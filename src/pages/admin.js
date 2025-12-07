@@ -30,12 +30,44 @@
     window.location.href = 'index.html';
   });
 
-  document.getElementById('btnUsers').addEventListener('click', () => {
-    // exemple simulé : liste statique
-    const list = [
-      {email: 'user@example.com', role: 'user'},
-      {email: 'demo@example.com', role: 'user'}
-    ];
-    document.getElementById('adminContent').innerHTML = '<pre>' + JSON.stringify(list, null, 2) + '</pre>';
-  });
+async function loadAllPayments() {
+  try {
+    const res = await fetch('http://localhost:4000/api/transactions', {
+      headers: {
+        'Authorization': 'Bearer ' + localStorage.getItem('token')
+      }
+    });
+    if(!res.ok) throw new Error('Impossible de charger les paiements');
+    const data = await res.json();
+    return data.data.transactions;
+  } catch(err) {
+    console.error(err);
+    return [];
+  }
+}
+
+async function refundTransaction(txId, amount) {
+  const confirmed = confirm(`Confirmer le remboursement de ${amount} € ?`);
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`http://localhost:4000/api/transactions/${txId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token')
+      },
+      body: JSON.stringify({ isRefunded: true })
+    });
+
+    if(!res.ok) throw new Error('Erreur remboursement');
+    alert('Remboursement effectué !');
+    loadAllPayments(); // rafraîchir
+  } catch(err) {
+    console.error(err);
+    alert('Erreur lors du remboursement');
+  }
+}
+
+
 })();

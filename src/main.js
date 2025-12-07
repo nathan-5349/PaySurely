@@ -20,10 +20,50 @@ document.querySelector('#app').innerHTML = `
 
 
 // --- utilisateurs simulés pour test ---
-const users = [
+/* const users = [
   { email: "admin@example.com", password: "1234", role: "admin" },
   { email: "user@example.com", password: "1234", role: "user" }
-];
+]; */
+form.addEventListener("submit", async function(e){
+  e.preventDefault();
+  const email = document.getElementById("identifiant").value.trim();
+  const password = document.getElementById("motdepasse").value.trim();
+
+  try {
+    const res = await fetch('http://localhost:4000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    if(!res.ok) {
+      const errData = await res.json();
+      message.style.color = 'tomato';
+      message.textContent = errData.error?.message || 'Erreur de connexion';
+      return;
+    }
+
+    const data = await res.json();
+    const token = data.data.token;
+    const role = data.data.user.role;
+    const emailResp = data.data.user.email;
+
+    localStorage.setItem('token', token);
+    localStorage.setItem('role', role);
+    localStorage.setItem('email', emailResp);
+
+    message.style.color = 'lightgreen';
+    message.textContent = `Bienvenue ${role} ! Chargement...`;
+
+    setTimeout(() => loadRoleScript(role), 250);
+
+  } catch(err) {
+    message.style.color = 'tomato';
+    message.textContent = 'Erreur serveur ou réseau';
+    console.error(err);
+  }
+});
+
 
 // --- fonction pour charger le script correspondant au rôle ---
 function loadRoleScript(role) {

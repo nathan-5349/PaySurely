@@ -6,8 +6,25 @@
     return;
   }
   
-  let payments = JSON.parse(localStorage.getItem("payments") || "[]");
-
+  async function loadPayments() {
+    try {
+      const res = await fetch('http://localhost:4000/api/transactions', {
+        headers: {
+          'Authorization': 'Bearer ' + localStorage.getItem('token')
+        }
+      });
+      if (!res.ok) throw new Error('Impossible de charger les paiements');
+      const data = await res.json();
+      return data.data.transactions; // format backend
+    } catch(err) {
+      console.error(err);
+      return [];
+    }
+  }
+  
+  let payments = await loadPayments();
+  
+  
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="bg-[url('/src/image/FondEcran.jpg')] bg-center bg-no-repeat bg-cover min-h-screen w-screen relative before:absolute before:inset-0 before:bg-black/40 flex items-center justify-center">
@@ -28,9 +45,9 @@
           <h2 class="text-xl font-semibold mb-4">Historique des paiements</h2>
           <div id="paymentList" class="flex flex-col gap-4">
             ${
-              payments.length === 0
-                ? `<p class="text-gray-600">Aucun paiement enregistré.</p>`
-                : payments.map((p, i) => `
+  payments.length === 0
+  ? `<p class="text-gray-600">Aucun paiement enregistré.</p>`
+  : payments.map((p, i) => `
                     <div class="p-4 border rounded-lg shadow-sm bg-gray-50 flex justify-between items-start">
                       <div>
                         <p><strong>Montant :</strong> ${p.amount} €</p>
@@ -45,7 +62,7 @@
                       </div>
                     </div>
                   `).join('')
-            }
+}
           </div>
         </div>
 
@@ -66,44 +83,44 @@
     </div>
   `;
 
-  function maskCard(num) {
-    if(!num || num.length < 16) return "Carte invalide";
-    return num.substring(0,4) + " **** **** " + num.substring(12);
-  }
+function maskCard(num) {
+  if(!num || num.length < 16) return "Carte invalide";
+  return num.substring(0,4) + " **** **** " + num.substring(12);
+}
 
-  // Logout
-  document.getElementById('btnLogout').addEventListener('click', () => {
-    localStorage.removeItem('role');
-    localStorage.removeItem('email');
-    window.location.href = 'index.html';
-  });
+// Logout
+document.getElementById('btnLogout').addEventListener('click', () => {
+  localStorage.removeItem('role');
+  localStorage.removeItem('email');
+  window.location.href = 'index.html';
+});
 
-  // Modal
-  const modal = document.getElementById("modalMessage");
-  const modalContent = document.getElementById("modalContent");
-  const closeBtn = document.getElementById("btnCloseModal");
-  closeBtn.addEventListener('click', () => {
-    modal.classList.add("hidden");
-  });
+// Modal
+const modal = document.getElementById("modalMessage");
+const modalContent = document.getElementById("modalContent");
+const closeBtn = document.getElementById("btnCloseModal");
+closeBtn.addEventListener('click', () => {
+  modal.classList.add("hidden");
+});
 
-  function attachViewMessageButtons() {
-    document.querySelectorAll('.btnViewMessage').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const index = btn.dataset.index;
-        const msg = payments[index].message || "<em>Aucun message</em>";
-        modalContent.innerHTML = msg;
-        modal.classList.remove("hidden");
-        modal.classList.add("flex");
-      });
+function attachViewMessageButtons() {
+  document.querySelectorAll('.btnViewMessage').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const index = btn.dataset.index;
+      const msg = payments[index].message || "<em>Aucun message</em>";
+      modalContent.innerHTML = msg;
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
     });
-  }
+  });
+}
 
-  attachViewMessageButtons();
+attachViewMessageButtons();
 
-  // Gestion du formulaire "Nouveau paiement" dans un sidebar séparé
-  const btnNewPay = document.getElementById('btnNewPay');
+// Gestion du formulaire "Nouveau paiement" dans un sidebar séparé
+const btnNewPay = document.getElementById('btnNewPay');
 
-  const paymentFormHTML = `
+const paymentFormHTML = `
     <div id="paymentSidebar" class="fixed top-0 right-0 h-full w-96 bg-white shadow-lg p-6 z-20 transform translate-x-full transition-transform">
       <h2 class="text-xl font-semibold mb-4">Paiement</h2>
       <form id="newPaymentForm" class="flex flex-col gap-3">
@@ -119,73 +136,42 @@
     </div>
   `;
 
-  btnNewPay.addEventListener('click', () => {
-    if (!document.getElementById('paymentSidebar')) {
-      document.body.insertAdjacentHTML('beforeend', paymentFormHTML);
-
-      // Afficher le sidebar
-      const sidebar = document.getElementById('paymentSidebar');
-      requestAnimationFrame(() => {
-        sidebar.classList.remove('translate-x-full');
-      });
-
-      // Fermer le sidebar
-      document.getElementById('btnCancelPayment').addEventListener('click', () => {
-        sidebar.classList.add('translate-x-full');
-        sidebar.addEventListener('transitionend', () => sidebar.remove(), { once: true });
-      });
-
-      // Soumettre le formulaire
-      document.getElementById('newPaymentForm').addEventListener('submit', e => {
-        e.preventDefault();
-        const amount = document.getElementById('paymentAmount').value;
-        const card = document.getElementById('cardNumber').value;
-        const exp = document.getElementById('cardExp').value;
-        const message = document.getElementById('paymentMessage').value;
-
-        if (!amount || !card || !exp) {
-          alert('Veuillez remplir tous les champs obligatoires.');
-          return;
-        }
-
-        payments.push({
-          id: payments.length + 1,
-          amount,
-          cardNumber: card,
-          exp,
-          message,
-          date: new Date().toISOString().split('T')[0]
-        });
-        localStorage.setItem('payments', JSON.stringify(payments));
-
-        updatePaymentList();
-
-        // Fermer le sidebar après ajout
-        sidebar.classList.add('translate-x-full');
-        sidebar.addEventListener('transitionend', () => sidebar.remove(), { once: true });
-      });
+document.getElementById('newPaymentForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  
+  const amount = parseFloat(document.getElementById('paymentAmount').value);
+  const cardNumber = document.getElementById('cardNumber').value;
+  const exp = document.getElementById('cardExp').value;
+  const message = document.getElementById('paymentMessage').value;
+  
+  try {
+    const res = await fetch('http://localhost:4000/api/transactions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token')
+      },
+      body: JSON.stringify({
+        amount,
+        cardId: cardNumber, // pour simplification, ton backend peut gérer ID unique
+        message
+      })
+    });
+    
+    if(!res.ok) {
+      const errData = await res.json();
+      alert(errData.error?.message || 'Erreur lors du paiement');
+      return;
     }
-  });
-
-  // Rafraîchir l'historique après ajout
-  function updatePaymentList() {
-    const paymentList = document.getElementById('paymentList');
-    paymentList.innerHTML = payments.map((p, i) => `
-      <div class="p-4 border rounded-lg shadow-sm bg-gray-50 flex justify-between items-start">
-        <div>
-          <p><strong>Montant :</strong> ${p.amount} €</p>
-          <p><strong>Date :</strong> ${p.date}</p>
-          <p><strong>Carte :</strong> ${maskCard(p.cardNumber)}</p>
-          <p><strong>Expiration :</strong> ${p.exp}</p>
-        </div>
-        <div class="flex flex-col gap-2">
-          <button class="px-3 py-1 bg-gray-800 text-white rounded btnViewMessage" data-index="${i}">
-            Voir message
-          </button>
-        </div>
-      </div>
-    `).join('');
-    attachViewMessageButtons();
+    
+    // rafraîchir l'affichage
+    payments = await loadPayments();
+    updatePaymentList();
+    alert('Paiement ajouté avec succès !');
+    
+  } catch(err) {
+    console.error(err);
+    alert('Erreur serveur ou réseau');
   }
-
+});
 })();
