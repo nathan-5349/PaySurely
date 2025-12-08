@@ -42,11 +42,6 @@
     modal.classList.add('hidden');
   });
 
-  function maskCard(number) {
-    if (!number || number.length < 16) return '**** **** **** ****';
-    return number.substring(0,4) + ' **** **** ' + number.substring(12);
-  }
-
   async function loadAllPayments() {
     try {
       const res = await fetch('http://localhost:4000/api/transactions', {
@@ -70,61 +65,78 @@
       return;
     }
 
-    container.innerHTML = payments.map((p, i) => `
-      <div class="p-4 border rounded mb-2 flex justify-between items-start bg-gray-50">
+    container.innerHTML = '';
+
+    for (const p of payments) {
+      let last4 = '••••';
+      let exp = '??/??';
+
+      if (p.cardId) {
+        try {
+          const res = await fetch(`http://localhost:4000/api/cards/${p.cardId}`, {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const card = data.data.card;
+            last4 = card.lastNumbers || card.firstNumbers || '••••';
+            exp = card.expirationDate || '??/??';
+          }
+        } catch (e) {
+          console.log('Carte non trouvée pour ce paiement');
+        }
+      }
+
+      const div = document.createElement('div');
+      div.className = 'p-4 border rounded mb-2 flex justify-between items-start bg-gray-50';
+      div.innerHTML = `
         <div>
           <p><strong>Montant:</strong> ${p.amount} €</p>
           <p><strong>Date:</strong> ${new Date(p.transactionDate).toLocaleString()}</p>
-          <p><strong>Carte:</strong> ${maskCard(p.numberCard || p.cardNumber || '')}</p>
+          <p><strong>Carte:</strong> **** **** **** ${last4}</p>
+          <p><strong>Expiration:</strong> ${exp}</p>
           <p><strong>Message:</strong> ${p.message ? p.message.substring(0, 30) + (p.message.length>30?'...':'') : 'Aucun'}</p>
           <p><strong>Status:</strong> ${p.isRefunded ? 'Remboursé' : 'Non remboursé'}</p>
         </div>
         <div class="flex flex-col gap-2">
-          <button class="px-3 py-1 bg-gray-800 text-white rounded btnViewMessage" data-index="${i}">Voir message</button>
+          <button class="px-3 py-1 bg-gray-800 text-white rounded btnViewMessage">Voir message</button>
           ${!p.isRefunded ? `<button class="px-3 py-1 bg-green-600 text-white rounded btnRefund" data-uuid="${p.uuid}">Rembourser</button>` : ''}
         </div>
-      </div>
-    `).join('');
+      `;
 
-    // Setup modal pour voir message complet
-    document.querySelectorAll('.btnViewMessage').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const index = btn.dataset.index;
-        const msg = payments[index].message || '<em>Aucun message</em>';
-        modalContent.innerHTML = msg;
+      div.querySelector('.btnViewMessage').addEventListener('click', () => {
+        modalContent.innerHTML = (p.message || '<em>Aucun message</em>').replace(/\n/g, '<br>');
         modal.classList.remove('hidden');
         modal.classList.add('flex');
       });
-    });
 
-    // Setup bouton remboursement
-    document.querySelectorAll('.btnRefund').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const uuid = btn.dataset.uuid;
-        if(!confirm('Confirmer le remboursement ?')) return;
-
-        try {
-          const res = await fetch(`http://localhost:4000/api/transactions/${uuid}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + localStorage.getItem('token')
-            },
-            body: JSON.stringify({ isRefunded: true })
-          });
-          if(!res.ok) {
-            const errData = await res.json();
-            alert(errData.error?.message || 'Erreur lors du remboursement');
-            return;
+      const refundBtn = div.querySelector('.btnRefund');
+      if (refundBtn) {
+        refundBtn.addEventListener('click', async () => {
+          if(!confirm('Confirmer le remboursement ?')) return;
+          try {
+            const res = await fetch(`http://localhost:4000/api/transactions/${p.uuid}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+              },
+              body: JSON.stringify({ isRefunded: true })
+            });
+            if(res.ok) {
+              alert('Remboursement effectué !');
+              renderPayments();
+            } else {
+              alert('Erreur lors du remboursement');
+            }
+          } catch(err) {
+            alert('Erreur serveur ou réseau');
           }
-          alert('Remboursement effectué !');
-          renderPayments();
-        } catch(err) {
-          console.error(err);
-          alert('Erreur serveur ou réseau');
-        }
-      });
-    });
+        });
+      }
+
+      container.appendChild(div);
+    }
   }
 
   renderPayments();
