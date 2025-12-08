@@ -1,6 +1,5 @@
 import './style.css';
 
-// --- Structure HTML du login ---
 document.querySelector('#app').innerHTML = `
 <div class="bg-[url('/src/image/FondEcran.jpg')] bg-center bg-no-repeat bg-cover h-screen w-screen relative before:absolute before:inset-0 before:bg-black/40 before:z-0">
   <div class="relative z-10 flex flex-col items-center justify-center h-full text-white">

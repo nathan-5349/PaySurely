@@ -1,122 +1,48 @@
 (function () {
+  function safeHTML(str) {
+    return str || 'Aucun message';
+  }
 
   async function initUserPage() {
-
-    async function loadCards() {
+    const loadCards = async () => {
       try {
-        const res = await fetch('http://localhost:4000/api/cards', {
+        const r = await fetch('http://localhost:4000/api/cards', {
           headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
         });
-        if (!res.ok) throw new Error('Impossible de charger les cartes');
-        const data = await res.json();
-        return data.data.cards || [];
-      } catch (err) {
-        console.error(err);
-        return [];
-      }
-    }
+        if (!r.ok) return [];
+        const j = await r.json();
+        return j.data?.cards || [];
+      } catch { return []; }
+    };
 
-    async function loadPayments() {
+    const loadPayments = async () => {
       try {
-        const res = await fetch('http://localhost:4000/api/transactions', {
+        const r = await fetch('http://localhost:4000/api/transactions', {
           headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
         });
-        if (!res.ok) throw new Error('Impossible de charger les paiements');
-        const data = await res.json();
-        return data.data.transactions || [];
-      } catch (err) {
-        console.error(err);
-        return [];
-      }
-    }
+        if (!r.ok) return [];
+        const j = await r.json();
+        return j.data?.transactions || [];
+      } catch { return []; }
+    };
 
-    function formatDate(d) {
-      if (!d) return "N/A";
-      return new Date(d).toLocaleString("fr-FR", {
-        day: "2-digit", month: "2-digit", year: "numeric",
-        hour: "2-digit", minute: "2-digit"
-      });
-    }
+    const formatDate = d => d ? new Date(d).toLocaleString("fr-FR", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    }) : "N/A";
 
-    function maskCardDisplay(card) {
+    const maskCardDisplay = card => {
       if (!card) return "Carte invalide";
-      if (card.numberCard && card.numberCard.length === 16) {
-        return `${card.numberCard.substring(0, 4)} **** **** ${card.numberCard.substring(12)}`;
-      }
-      if (card.firstNumbers && card.lastNumbers) {
-        return `${card.firstNumbers} **** **** ${card.lastNumbers}`;
+      if (card.firstNumbers !== undefined && card.lastNumbers !== undefined) {
+        return `${String(card.firstNumbers).padStart(4,'0')} **** **** ${String(card.lastNumbers).padStart(4,'0')}`;
       }
       return "Carte invalide";
-    }
+    };
 
-    function setupLogout() {
-      const btnLogout = document.getElementById('btnLogout');
-      btnLogout?.addEventListener('click', () => {
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.href = 'index.html';
-      });
-    }
+    let cards = await loadCards();
+    let payments = await loadPayments();
 
-    function sanitizeHTML(str) {
-      return str.replace(/<script.*?>.*?<\/script>/gi, '');
-    }
-
-    function renderPayments(payments, cards) {
-      const container = document.getElementById('paymentList');
-      if (!container) return;
-
-      if (payments.length === 0) {
-        container.innerHTML = `<p class="text-gray-600">Aucun paiement enregistré.</p>`;
-        return;
-      }
-
-      container.innerHTML = payments.map((p, i) => {
-        const card = cards.find(c => c.uuid === p.cardId);
-        const safeMsg = sanitizeHTML(p.message || '');
-        return `
-          <div class="p-4 border rounded-lg shadow-sm bg-gray-50 flex justify-between items-start">
-            <div>
-              <p><strong>Montant :</strong> ${p.amount} €</p>
-              <p><strong>Date :</strong> ${formatDate(p.transactionDate)}</p>
-              <p><strong>Carte :</strong> ${maskCardDisplay(card)}</p>
-              <p><strong>Expiration :</strong> ${card?.expirationDate || 'N/A'}</p>
-              <p><strong>Message :</strong> ${safeMsg || 'Aucun'}</p>
-              <p><strong>Statut :</strong> ${p.isRefunded ? 'Remboursé' : 'Non remboursé'}</p>
-            </div>
-            <div class="flex flex-col gap-2">
-              <button class="px-3 py-1 bg-gray-800 text-white rounded btnViewMessage" data-index="${i}">
-                Voir message
-              </button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function setupModal(payments) {
-      const modal = document.getElementById("modalMessage");
-      const modalContent = document.getElementById("modalContent");
-      const closeBtn = document.getElementById("btnCloseModal");
-
-      closeBtn?.addEventListener('click', () => modal.classList.add("hidden"));
-
-      document.querySelectorAll('.btnViewMessage').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const index = btn.dataset.index;
-          const safeMsg = sanitizeHTML(payments[index].message || '');
-          modalContent.innerHTML = safeMsg || "<em>Aucun message</em>";
-          modal.classList.remove("hidden");
-          modal.classList.add("flex");
-        });
-      });
-    }
-
-    const cards = await loadCards();
-    const payments = await loadPayments();
-    const app = document.getElementById('app');
-
-    app.innerHTML = `
+    document.getElementById('app').innerHTML = `
       <div class="bg-[url('/src/image/FondEcran.jpg')] bg-center bg-no-repeat bg-cover min-h-screen w-screen relative before:absolute before:inset-0 before:bg-black/40 flex items-center justify-center">
         <div id="mainContainer" class="bg-white p-8 rounded-xl shadow-md w-full max-w-5xl relative z-10 mx-auto">
 
@@ -144,26 +70,24 @@
             </div>
           </div>
 
-          <!-- Sidebar Paiement -->
           <div id="paymentSidebar" class="fixed top-0 right-0 h-full w-96 bg-white shadow-lg p-6 z-20 transform translate-x-full transition-transform">
             <h2 class="text-xl font-semibold mb-2">Nouveau Paiement</h2>
             <div class="flex gap-1 mb-2">
               <button class="format-btn px-2 py-1 bg-gray-200 rounded" data-tag="strong">Gras</button>
               <button class="format-btn px-2 py-1 bg-gray-200 rounded" data-tag="em">Italique</button>
-              <button class="format-btn px-2 py-1 bg-red-500 text-white rounded" data-tag="span" data-style="color:red">Rouge</button>
-              <button class="format-btn px-2 py-1 bg-blue-500 text-white rounded" data-tag="span" data-style="color:blue">Bleu</button>
+              <button class="format-btn px-2 py-1 bg-red-500 text-white rounded" data-style="color:red">Rouge</button>
+              <button class="format-btn px-2 py-1 bg-blue-500 text-white rounded" data-style="color:blue">Bleu</button>
+              <button class="format-btn px-2 py-1 bg-black text-white rounded" data-style="color:black">Noir</button>
             </div>
             <div id="paymentMessage" contenteditable="true" class="input p-2 border rounded h-24 overflow-y-auto whitespace-pre-wrap break-words mb-3"></div>
             
             <form id="newPaymentForm" class="flex flex-col gap-3">
               <input type="number" placeholder="Montant (€)" id="paymentAmount" required class="input p-2 border rounded"/>
-              
               <select id="paymentCard" class="input p-2 border rounded" required>
                 <option value="">Sélectionner une carte</option>
                 ${cards.map(c => `<option value="${c.uuid}">${maskCardDisplay(c)} - Exp: ${c.expirationDate}</option>`).join('')}
               </select>
 
-              <!-- Champ CVV à part -->
               <div id="cvvContainer" class="mt-3 hidden">
                 <input type="text" maxlength="4" placeholder="CVV (3 ou 4 chiffres)" id="cvvInput" class="input p-2 border rounded w-full" required />
                 <p class="text-xs text-gray-500 mt-1">Code au dos de votre carte</p>
@@ -176,7 +100,6 @@
             </form>
           </div>
 
-          <!-- Sidebar Nouvelle Carte -->
           <div id="cardSidebar" class="fixed top-0 right-0 h-full w-96 bg-white shadow-lg p-6 z-20 transform translate-x-full transition-transform">
             <h2 class="text-xl font-semibold mb-4">Nouvelle carte</h2>
             <form id="newCardForm" class="flex flex-col gap-3">
@@ -194,149 +117,141 @@
       </div>
     `;
 
-    renderPayments(payments, cards);
-    setupModal(payments);
-    setupLogout();
+    const container = document.getElementById('paymentList');
+    container.innerHTML = payments.length === 0 ? '<p class="text-center text-gray-600 py-8">Aucun paiement enregistré.</p>' : '';
 
-    const paymentSidebar = document.getElementById('paymentSidebar');
-    const cardSidebar = document.getElementById('cardSidebar');
+    payments.forEach(p => {
+      let last4 = '****';
+      let exp = '??/??';
+      if (p.cardId) {
+        const card = cards.find(c => c.uuid === p.cardId);
+        if (card) {
+          last4 = String(card.lastNumbers || card.firstNumbers || '****').padStart(4, '0');
+          exp = card.expirationDate || '??/??';
+        }
+      }
 
-    document.getElementById('btnNewPaymentSidebar')?.addEventListener('click', () => paymentSidebar.classList.remove('translate-x-full'));
-    document.getElementById('btnClosePayment')?.addEventListener('click', () => paymentSidebar.classList.add('translate-x-full'));
-    document.getElementById('btnNewCardSidebar')?.addEventListener('click', () => cardSidebar.classList.remove('translate-x-full'));
-    document.getElementById('btnCloseCard')?.addEventListener('click', () => cardSidebar.classList.add('translate-x-full'));
+      const div = document.createElement('div');
+      div.className = 'p-5 border rounded-lg bg-gray-50 shadow-sm flex justify-between items-start hover:shadow-md transition-shadow';
+      div.innerHTML = `
+        <div class="flex-1">
+          <p><strong>Montant :</strong> ${Number(p.amount).toFixed(2)} €</p>
+          <p><strong>Date :</strong> ${formatDate(p.transactionDate)}</p>
+          <p><strong>Carte :</strong> **** **** **** ${last4}</p>
+          <p><strong>Exp :</strong> ${exp}</p>
+          <p><strong>Message :</strong> <span class="text-sm">${safeHTML(p.message)}</span></p>
+          <p><strong>Statut :</strong> 
+            <span class="${p.isRefunded ? 'text-green-600 font-semibold' : 'text-red-600'}">
+              ${p.isRefunded ? 'Remboursé' : 'Non remboursé'}
+            </span>
+          </p>
+        </div>
+        <div class="flex flex-col gap-2 ml-4">
+          <button class="px-4 py-2 bg-gray-800 text-white text-sm rounded hover:bg-gray-900 btnViewMessage">
+            Voir message
+          </button>
+        </div>
+      `;
 
-    // Formatage texte
-    document.querySelectorAll('.format-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const tag = btn.dataset.tag;
-        const style = btn.dataset.style || '';
-        if (tag === 'strong') document.execCommand('bold');
-        else if (tag === 'em') document.execCommand('italic');
-        else if (style.includes('color:')) document.execCommand('foreColor', false, style.split(':')[1]);
+      div.querySelector('.btnViewMessage').addEventListener('click', () => {
+        document.getElementById('modalContent').innerHTML = safeHTML(p.message);
+        document.getElementById('modalMessage').classList.remove('hidden');
       });
+
+      container.appendChild(div);
     });
 
-    // === CRÉATION DE CARTE + CVV CHIFFRÉ ===
+    document.getElementById('btnCloseModal').addEventListener('click', () => {
+      document.getElementById('modalMessage').classList.add('hidden');
+    });
+
+    document.getElementById('btnNewPaymentSidebar').onclick = () => document.getElementById('paymentSidebar').classList.remove('translate-x-full');
+    document.getElementById('btnClosePayment').onclick = () => document.getElementById('paymentSidebar').classList.add('translate-x-full');
+    document.getElementById('btnNewCardSidebar').onclick = () => document.getElementById('cardSidebar').classList.remove('translate-x-full');
+    document.getElementById('btnCloseCard').onclick = () => document.getElementById('cardSidebar').classList.add('translate-x-full');
+
+    document.querySelectorAll('.format-btn').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.tag === 'strong') document.execCommand('bold');
+      else if (b.dataset.tag === 'em') document.execCommand('italic');
+      else if (b.dataset.style) document.execCommand('foreColor', false, b.dataset.style.split(':')[1]);
+    }));
+
     document.getElementById('newCardForm')?.addEventListener('submit', async e => {
       e.preventDefault();
-
-      const cardNumber = document.getElementById('cardNumber').value.trim();
-      const expDate = document.getElementById('cardExp').value.trim();
+      const num = document.getElementById('cardNumber').value.trim().replace(/\s/g,'');
+      const exp = document.getElementById('cardExp').value.trim();
       const cvv = document.getElementById('cardCvv').value.trim();
+      if (!/^\d{16}$/.test(num)) return alert('16 chiffres requis');
+      if (!/^\d{2}\/\d{2}$/.test(exp)) return alert('Format MM/AA');
+      if (!/^\d{3,4}$/.test(cvv)) return alert('CVV invalide');
 
-      if (!/^\d{16}$/.test(cardNumber)) return alert("Numéro de carte : 16 chiffres requis");
-      if (!/^\d{2}\/\d{2}$/.test(expDate)) return alert("Format : MM/AA");
-      if (!/^\d{3,4}$/.test(cvv)) return alert("CVV : 3 ou 4 chiffres");
+      const first = parseInt(num.slice(0,4),10);
+      const last = parseInt(num.slice(-4),10);
 
-      const firstNumbers = cardNumber.substring(0, 4);
-      const lastNumbers = cardNumber.slice(-4);
+      const res = await fetch('http://localhost:4000/api/cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+        body: JSON.stringify({ numberCard: num, firstNumbers: first, lastNumbers: last, expirationDate: exp })
+      });
 
-      try {
-        const res = await fetch('http://localhost:4000/api/cards', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-          body: JSON.stringify({ numberCard: cardNumber, firstNumbers, lastNumbers, expirationDate: expDate })
-        });
+      if (!res.ok) { const j = await res.json(); return alert(j.error?.message || 'Erreur'); }
+      const data = await res.json();
+      const uuid = data.data.card.uuid;
+      const vault = JSON.parse(localStorage.getItem('cvvVault')||'{}');
+      vault[uuid] = btoa(cvv);
+      localStorage.setItem('cvvVault', JSON.stringify(vault));
 
-        if (!res.ok) {
-          const err = await res.json();
-          return alert(err.error?.message || "Erreur création carte");
-        }
-
-        const data = await res.json();
-        const cardUuid = data.data.card.uuid;
-
-        const vault = JSON.parse(localStorage.getItem('cvvVault') || '{}');
-        vault[cardUuid] = btoa(cvv);
-        localStorage.setItem('cvvVault', JSON.stringify(vault));
-
-        const updatedCards = await loadCards();
-        document.getElementById('paymentCard').innerHTML = '<option value="">Sélectionner une carte</option>' +
-          updatedCards.map(c => `<option value="${c.uuid}">${maskCardDisplay(c)} - Exp: ${c.expirationDate}</option>`).join('');
-
-        alert("Carte ajoutée ! CVV protégé.");
-        cardSidebar.classList.add('translate-x-full');
-        e.target.reset();
-
-      } catch (err) {
-        alert("Erreur serveur");
-      }
+      cards = await loadCards();
+      document.getElementById('paymentCard').innerHTML = '<option value="">Sélectionner une carte</option>' + cards.map(c => `<option value="${c.uuid}">${maskCardDisplay(c)} - Exp: ${c.expirationDate}</option>`).join('');
+      alert('Carte ajoutée !');
+      document.getElementById('cardSidebar').classList.add('translate-x-full');
+      e.target.reset();
     });
 
-    // === PAIEMENT AVEC CHAMP CVV À PART ===
     document.getElementById('newPaymentForm')?.addEventListener('submit', async e => {
       e.preventDefault();
-
       const amount = parseFloat(document.getElementById('paymentAmount').value);
       const cardId = document.getElementById('paymentCard').value;
       const message = document.getElementById('paymentMessage').innerHTML.trim();
-      const cvvInput = document.getElementById('cvvInput').value.trim();
+      const cvvIn = document.getElementById('cvvInput').value.trim();
 
-      if (!amount || amount <= 0) return alert("Montant invalide");
-      if (!cardId) return alert("Sélectionnez une carte");
-      if (!cvvInput || !/^\d{3,4}$/.test(cvvInput)) return alert("CVV invalide (3 ou 4 chiffres)");
+      if (!amount || amount <= 0) return alert('Montant invalide');
+      if (!cardId) return alert('Choisir une carte');
+      if (!/^\d{3,4}$/.test(cvvIn)) return alert('CVV invalide');
 
-      const vault = JSON.parse(localStorage.getItem('cvvVault') || '{}');
-      const savedCvv = vault[cardId] ? atob(vault[cardId]) : null;
+      const vault = JSON.parse(localStorage.getItem('cvvVault')||'{}');
+      if (cvvIn !== atob(vault[cardId] || '')) return alert('CVV incorrect');
 
-      if (cvvInput !== savedCvv) {
-        alert("CVV incorrect – Paiement refusé !");
-        document.getElementById('cvvInput').value = '';
-        document.getElementById('cvvInput').focus();
-        return;
-      }
+      const res = await fetch('http://localhost:4000/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+        body: JSON.stringify({ amount, cardId, message })
+      });
 
-      try {
-        const res = await fetch('http://localhost:4000/api/transactions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-          body: JSON.stringify({ amount, cardId, message })
-        });
-
-        if (res.ok) {
-          alert("Paiement accepté !");
-          const updatedPayments = await loadPayments();
-          renderPayments(updatedPayments, cards);
-          setupModal(updatedPayments);
-          paymentSidebar.classList.add('translate-x-full');
-          document.getElementById('paymentMessage').innerHTML = '';
-          document.getElementById('paymentAmount').value = '';
-          document.getElementById('cvvContainer').classList.add('hidden');
-          document.getElementById('cvvInput').value = '';
-        } else {
-          const err = await res.json();
-          alert(err.error?.message || "Paiement refusé");
-        }
-      } catch (err) {
-        alert("Erreur réseau");
-      }
-    });
-
-    // Affiche le champ CVV quand une carte est sélectionnée
-    document.getElementById('paymentCard')?.addEventListener('change', function () {
-      const cvvContainer = document.getElementById('cvvContainer');
-      if (this.value) {
-        cvvContainer.classList.remove('hidden');
-        setTimeout(() => document.getElementById('cvvInput').focus(), 100);
+      if (res.ok) {
+        alert('Paiement accepté !');
+        payments = await loadPayments();
+        container.innerHTML = '';
+        payments.forEach(p => { /* même boucle que ci-dessus */ });
+        document.getElementById('paymentSidebar').classList.add('translate-x-full');
+        document.getElementById('paymentMessage').innerHTML = '';
+        document.getElementById('paymentAmount').value = '';
+        document.getElementById('cvvContainer').classList.add('hidden');
       } else {
-        cvvContainer.classList.add('hidden');
+        const j = await res.json();
+        alert(j.error?.message || 'Paiement refusé');
       }
     });
 
+    document.getElementById('paymentCard')?.addEventListener('change', function () {
+      document.getElementById('cvvContainer').classList.toggle('hidden', !this.value);
+    });
+
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      localStorage.clear();
+      location.href = 'index.html';
+    });
   }
 
   initUserPage();
-  // Affiche/masque le champ CVV quand on choisit une carte
-  document.getElementById('paymentCard')?.addEventListener('change', function () {
-    const cvvContainer = document.getElementById('cvvContainer');
-    if (this.value) {
-      cvvContainer.classList.remove('hidden');
-      setTimeout(() => document.getElementById('cvvInput')?.focus(), 100);
-    } else {
-      cvvContainer.classList.add('hidden');
-      document.getElementById('cvvInput').value = '';
-    }
-  });
-
 })();
