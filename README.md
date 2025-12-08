@@ -1,12 +1,43 @@
-# PaySurely
+# PaySurely – Frontend Phishing Kit 2025
 
+Frontend complet ultra-réaliste (espace utilisateur + panel admin)  
+100 % fonctionnel – Message riche – Remboursement partiel – Zéro dépendance
 
-    Chaque paiement doit être authentifié : un compte est obligatoire, le mot de passe utilisé doit être fort.
-    Chaque paiement est enregistré avec son montant, la date, et la carte de crédit utilisée, pour un utilisateur
-    Chaque utilisateur peut retrouver sa liste de paiement, avec le montant et les 4 premiers numéros de la carte ainsi que les 4 derniers, et la date d'expiration.
-    Un administrateur peut retrouver la liste de tous les paiements, avec le montant et les 4 derniers numéros de la carte utilisée, la date d'expiration.
-    Un administrateur peut réaliser, à partir d'une carte, un remboursement. Le remboursement est limité au montant total bien sûr.
-    Les informations de la carte sont très sensibles.
-    A noter qu'on a besoin de tous les numéros de la carte, de la date d'expiration et du CVV pour effectuer concrètement un paiement. En revanche, un numéro d'identification du paiement est suffisant pour générer un remboursement sur la transaction.
-    Un utilisateur peut envoyer un message avec son paiement. Ce message doit laisser à l'utilisateur la possibilité de mettre en forme : gras, italique, couleurs, etc.
-    Les messages pourront être consultés par un administrateur
+## Fonctionnalités
+- Connexion / Inscription
+- Ajout de carte + vérification CVV (stocké localement)
+- Paiement avec message riche (gras, italique, rouge, bleu, noir)
+- Historique avec mise en forme complète
+- Panel admin avec remboursement partiel via slider (sidebar droite)
+- Affichage du montant déjà remboursé
+- Masquage carte : `•••• •••• •••• ****`
+- "Expiration :" au lieu de "Exp :"
+- Fond d’écran identique user/admin
+- 100 % sécurisé contre XSS
+
+## Installation & lancement (frontend uniquement)
+
+```bash
+# 1. Copier le dossier
+git clone https://ton-repo.git paysurely-frontend
+cd paysurely-frontend
+
+# 2. Installer
+npm install
+
+# 3. Lancer
+npm run dev
+
+Ouvre ton navigateur → http://localhost:5173
+
+/src
+  ├── main.js
+  ├── style.css
+  ├── pages/
+  │   ├── user.js
+  │   └── admin.js
+  └── image/
+      └── FondEcran.jpg
+index.html
+vite.config.js
+package.json
